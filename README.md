@@ -8,8 +8,16 @@ A native Android client for a self-hosted Yuvomi family planner. It talks only t
 server's documented `/api/v1`, with no cloud of ours in between, and opens the web app in your
 browser for everything it does not do natively yet.
 
-**Status:** architecture and specs are done; implementation has not started. See the
-[plan](docs/PLAN.md).
+**Status:** the MVP is implemented and tested with unit, Robolectric and end-to-end smoke tests;
+it has not yet been tried by hand on a device. Contract tests against a real upstream server run in
+CI. See the [plan](docs/PLAN.md) for what is next.
+
+## Install
+
+Download `yuvomi-android-<version>.apk` from the latest
+[release](https://github.com/marcomow/yuvomi-android/releases) on the phone and open it
+(Android 8.0 or newer; allow installing from your browser when asked). Releases are
+pre-releases of a proof of concept. How they are made: [RELEASING.md](docs/RELEASING.md).
 
 ## MVP
 
@@ -31,6 +39,21 @@ upstream's design tokens, as are all 27 of its languages. Details:
 - Specs: [sign-in](docs/spec/signin.md), [overview](docs/spec/overview.md),
   [tasks](docs/spec/tasks.md)
 - [Parity with upstream](docs/PARITY.md)
+
+## Build and test
+
+Needs JDK 17 or newer and the Android SDK (compile SDK 36). `local.properties` with `sdk.dir`
+points Gradle at the SDK.
+
+```bash
+./gradlew assembleDebug          # app/build/outputs/apk/debug/app-debug.apk
+./gradlew testDebugUnitTest      # unit, Robolectric and end-to-end smoke tests
+./gradlew lintDebug
+```
+
+CI (`.github/workflows/android.yml`) runs the same, keeps the debug APK as an artifact, and runs
+the contract tests against `ghcr.io/ulsklyc/yuvomi` at the pinned version. Pushing a `v*` tag
+publishes a signed release APK (`.github/workflows/release.yml`, [RELEASING.md](docs/RELEASING.md)).
 
 ## Staying in sync with upstream
 
