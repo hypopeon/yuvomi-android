@@ -1,0 +1,30 @@
+# Feature specs
+
+One spec per feature. A spec is the contract between the decision records and the code: it names
+the exact upstream operations and fields used, the behaviour, and acceptance criteria that become
+tests. Code that does something a spec does not say is a bug in the code or a missing line in the
+spec; fix whichever is wrong.
+
+| Spec | Status | Upstream version checked |
+|---|---|---|
+| [Sign-in and session](signin.md) | Ready for implementation | 2.83.0 |
+| [Overview](overview.md) | Ready for implementation | 2.83.0 |
+| [Tasks](tasks.md) | Ready for implementation | 2.83.0 |
+
+## Conventions
+
+- **Requirement IDs** (`SIGNIN-R3`, `TASKS-R12`) are stable. A removed requirement keeps its ID,
+  struck through, so references in tests and commits stay meaningful.
+- **Acceptance criteria** (`SIGNIN-A3`) are written as Given / When / Then and name the test level
+  that proves them:
+  - **unit**: JVM test, no Android, fakes for the API.
+  - **ui**: Compose UI test with a fake repository.
+  - **contract**: the real API client against upstream's Docker image at the pinned version,
+    seeded with `scripts/seed-demo.js` (see [UPSTREAM-SYNC.md](../UPSTREAM-SYNC.md)).
+- **Paths** are written without the `/api/v1` prefix inside tables; every call goes to
+  `<server>/api/v1/...`.
+- **Envelope** says whether the JSON answer is wrapped as `{ "data": ... }` or bare.
+- **Strings** are referenced by upstream i18n key (`tasks.title`). Strings that exist only in this
+  app use the `android.` prefix and are listed in the spec that introduces them.
+- Field lists name what the app **reads**. Every other field is ignored, and every listed field is
+  treated as optional unless the spec says otherwise (ADR 0003).

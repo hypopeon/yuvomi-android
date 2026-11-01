@@ -1,8 +1,9 @@
 # Yuvomi for Android: architecture brainstorm
 
-Status: **draft for discussion**, 2026-11-01. Nothing here is decided until the open
-questions at the end are answered. Once they are, this document becomes
-`docs/ARCHITECTURE.md` plus one ADR per decision, and the spec work starts from it.
+Status: **superseded** by [ARCHITECTURE.md](ARCHITECTURE.md) and the [decision records](adr/),
+2026-11-01. Kept for history: it records the options that were weighed. The answers to section 6
+were: 1 yes, 2 Material 3 with Yuvomi skin, 3 no notifications, 4 open in browser, 5 SSO
+unsupported, 6 tiers 1 and 2, 7 unofficial, 8 proof of concept only, 9 MIT and English.
 
 Upstream studied: [ulsklyc/yuvomi](https://github.com/ulsklyc/yuvomi) at v2.83.0
 (commit `ef1ef51`, 2026-11-01).
