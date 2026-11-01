@@ -1,0 +1,17 @@
+# Top-level namespaces of upstream's public/locales/<locale>.json that the app
+# ships. One per line; `#` starts a comment. Adding a namespace here and running
+# upstream/sync.sh pulls it into app/src/main/assets/i18n/.
+common
+nav
+login
+offline
+modal
+datepicker
+emptyHint
+dashboard
+tasks
+rrule
+markdown
+category
+userMultiSelect
+wmo
