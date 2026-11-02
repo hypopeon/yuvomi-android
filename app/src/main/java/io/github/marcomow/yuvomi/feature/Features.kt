@@ -38,14 +38,16 @@ import io.github.marcomow.yuvomi.feature.shopping.ShoppingOperation
 import io.github.marcomow.yuvomi.feature.splitexpenses.SplitExpensesOperation
 import io.github.marcomow.yuvomi.feature.subscriptions.SubscriptionsOperation
 import io.github.marcomow.yuvomi.feature.tags.TagsFeature
+import io.github.marcomow.yuvomi.feature.tags.TagsOperation
 import io.github.marcomow.yuvomi.feature.waste.WasteFeature
 import io.github.marcomow.yuvomi.feature.waste.WasteOperation
 
 /** The native modules beyond Overview and Tasks, in bar and "More" order (ADR 0015). */
 object Features {
     val all: List<Feature> = listOf(
-        ShoppingFeature, MealsFeature, RecipesFeature, NotesFeature, PantryFeature,
-        CalendarFeature, ScheduleFeature, DocumentsFeature, HealthFeature, BudgetFeature, SettingsFeature,
+        ShoppingFeature, MealsFeature, TagsFeature, RecipesFeature, NotesFeature, PantryFeature,
+        CalendarFeature, RewardsFeature, ScheduleFeature, HousekeepingFeature, WasteFeature, DocumentsFeature,
+        InventoryFeature, ContactsFeature, BirthdaysFeature, HealthFeature, BudgetFeature, SettingsFeature,
     )
 
     /**
@@ -53,10 +55,7 @@ object Features {
      * from finished modules land on a placeholder that offers the web app, but they are not
      * native yet: "More" lists them as web modules.
      */
-    val pending: List<Feature> = listOf(
-        RewardsFeature, HousekeepingFeature, WasteFeature, InventoryFeature, ContactsFeature,
-        BirthdaysFeature, TagsFeature,
-    )
+    val pending: List<Feature> = emptyList()
 
     /** Every upstream operation the app calls; checked against upstream/operations-used*.txt. */
     val operations: List<ApiOperation> = listOf(
@@ -66,7 +65,7 @@ object Features {
         HousekeepingOperation.entries, WasteOperation.entries, DocumentsOperation.entries,
         InventoryOperation.entries, ContactsOperation.entries, BirthdaysOperation.entries,
         HealthOperation.entries, BudgetOperation.entries, SettingsOperation.entries,
-        SubscriptionsOperation.entries, SplitExpensesOperation.entries,
+        SubscriptionsOperation.entries, SplitExpensesOperation.entries, TagsOperation.entries,
     ).flatten()
 
     /** Module ids that have native screens: Overview, Tasks and [all]. */
