@@ -1,5 +1,6 @@
 package io.github.marcomow.yuvomi.feature.shell
 
+import androidx.compose.runtime.collectAsState
 import io.github.marcomow.yuvomi.feature.settings.SettingsRegistry
 import io.github.marcomow.yuvomi.feature.settings.SettingsRoutes
 import androidx.compose.foundation.layout.Box
@@ -112,6 +113,17 @@ fun MainShell(container: AppContainer, state: SessionState.SignedIn, deepLink: S
     // shows as the banner above every screen (UpdateBanner).
     LaunchedEffect(Unit) { container.updater.checkIfDue() }
 
+    // Reminders on the phone (REM-R7): Android 13 and newer ask once whether the app may notify.
+    val askNotify = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { granted -> if (granted) scope.launch { io.github.marcomow.yuvomi.feature.reminders.ReminderScheduler.refresh(context) } }
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return@LaunchedEffect
+        if (io.github.marcomow.yuvomi.feature.reminders.ReminderScheduler.canNotify(context)) return@LaunchedEffect
+        if (!container.settings.phoneRemindersNow() || !container.settings.firstTime("notify-permission")) return@LaunchedEffect
+        askNotify.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+    }
+
     // Foreground after more than 5 minutes: re-read the member and household (OVERVIEW-R14).
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         val now = System.currentTimeMillis()
@@ -139,7 +151,8 @@ fun MainShell(container: AppContainer, state: SessionState.SignedIn, deepLink: S
 
     // The bar and the rail: Overview, the member's three slots (BarSlots), More.
     val shown = shell.shownModules()
-    val slots = BarSlots.bar(session.preferences, shown)
+    val tagsSlot by container.settings.tagsBarSlot.collectAsState(initial = null)
+    val slots = BarSlots.bar(session.preferences, shown, tagsSlot)
     val kitchenFeatures = Features.all.filter { it.id in BarSlots.KITCHEN_MODULES }
     var lastKitchen by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(current) {

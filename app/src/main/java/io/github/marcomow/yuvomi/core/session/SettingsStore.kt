@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
@@ -32,6 +33,8 @@ class SettingsStore(private val context: Context, private val box: SecretBox) {
         val autoUpdates = booleanPreferencesKey("autoUpdates")
         val lastUpdateCheck = longPreferencesKey("lastUpdateCheck")
         val knownUpdate = stringPreferencesKey("knownUpdate")
+        val phoneReminders = booleanPreferencesKey("phoneReminders")
+        val tagsBarSlot = intPreferencesKey("tagsBarSlot")
         val dismissedUpdate = stringPreferencesKey("dismissedUpdate")
     }
 
@@ -62,6 +65,18 @@ class SettingsStore(private val context: Context, private val box: SecretBox) {
     /** The newest update the last check found (JSON of `Releases.Update`), so the banner survives a restart. */
     suspend fun knownUpdate(): String? = read(Keys.knownUpdate)
     suspend fun setKnownUpdate(json: String?) = context.dataStore.edit { if (json == null) it.remove(Keys.knownUpdate) else it[Keys.knownUpdate] = json }
+
+    /**
+     * The bar slot (0 to 2) that shows Tags instead of the module saved there, or null. Kept on
+     * the phone: upstream's `mobile_nav_order` accepts only its own modules and drops `tags`.
+     */
+    val tagsBarSlot: Flow<Int?> = context.dataStore.data.map { it[Keys.tagsBarSlot]?.takeIf { s -> s in 0..2 } }
+    suspend fun setTagsBarSlot(slot: Int?) = context.dataStore.edit { if (slot == null) it.remove(Keys.tagsBarSlot) else it[Keys.tagsBarSlot] = slot }
+
+    /** Reminders as phone notifications (REM-R6), on by default. */
+    val phoneReminders: Flow<Boolean> = context.dataStore.data.map { it[Keys.phoneReminders] ?: true }
+    suspend fun phoneRemindersNow(): Boolean = phoneReminders.first()
+    suspend fun setPhoneReminders(on: Boolean) = context.dataStore.edit { it[Keys.phoneReminders] = on }
 
     /** The version whose banner the member closed; the next version shows it again. */
     val dismissedUpdate: Flow<String?> = context.dataStore.data.map { it[Keys.dismissedUpdate] }
