@@ -126,7 +126,7 @@ upstream image at the pinned version:
 
 ```bash
 docker run -d --name yuvomi -p 3000:3000 \
-  -e SESSION_SECRET="$(openssl rand -hex 32)" -e DB_ENCRYPTION_KEY= \
+  -e SESSION_SECRET="$(openssl rand -hex 32)" -e DB_ENCRYPTION_KEY= -e DB_ENCRYPTION_AUTO_KEY=false \
   ghcr.io/ulsklyc/yuvomi:<pinned>
 docker exec yuvomi node scripts/seed-demo.js --locale en
 ```
