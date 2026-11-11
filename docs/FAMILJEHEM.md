@@ -3,7 +3,7 @@
 Serverns produktionsdata får aldrig vara åtkomliga för byggmiljön.
 Bygg mot den syntetiska testservern. Inga konton, nycklar eller .env i Git.
 
-`build-signed-local.sh` använder en signernyckel och lösenordsfil utanför Git
+`bash build-signed-local.sh` använder en signernyckel och lösenordsfil utanför Git
 (default `../.private`). Skapa inte en ny nyckel vid varje release: Android
 kräver samma nyckel för uppgraderingar. En kopia på samma disk är ingen säker
 backup mot diskhaveri. Flytta en krypterad kopia till separat skyddad lagring.
