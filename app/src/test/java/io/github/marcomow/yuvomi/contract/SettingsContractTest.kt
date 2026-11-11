@@ -321,7 +321,10 @@ class SettingsContractTest : ContractTestBase() {
         assertNotNull(status.int("schema_version"))
         assertTrue("scheduler" in status)
         val bytes = alex.bytes(SettingsOperation.BACKUP_DATABASE)
-        assertEquals("SQLite format 3", String(bytes, 0, 15))
+        assertTrue("backup must contain database bytes", bytes.size > 512)
+        // The API preserves SQLCipher encryption; plaintext CI fixtures have a SQLite header.
+        val encrypted = status.child("database_key").bool("encrypted")
+        assertEquals(!encrypted, String(bytes, 0, 15) == "SQLite format 3")
         try {
             assertTrue("timestamp" in alex.data(SettingsOperation.BACKUP_TRIGGER, idempotencyKey = YuvomiClient.newIdempotencyKey()).obj())
         } catch (e: ApiProblem.Http) {
@@ -331,7 +334,7 @@ class SettingsContractTest : ContractTestBase() {
         assertTrue("keep" in webdav && "configured" in webdav)
         assertEquals(webdav.bool("enabled"), alex.data(SettingsOperation.WEBDAV_CONFIG_UPDATE, body = buildJsonObject { put("enabled", webdav.bool("enabled")) }).obj().bool("enabled"))
         expectHttp(400) { alex.data(SettingsOperation.WEBDAV_CONFIG_UPDATE, body = buildJsonObject { put("url", "ftp://nope") }) }
-        expectHttp(400) { alex.data(SettingsOperation.WEBDAV_TEST, body = buildJsonObject { put("url", "https://webdav.example.invalid/") ; put("username", "x"); put("password", "y") }, idempotencyKey = YuvomiClient.newIdempotencyKey()) }
+        expectHttp(502, "remote_unreachable") { alex.data(SettingsOperation.WEBDAV_TEST, body = buildJsonObject { put("url", "https://webdav.example.invalid/") ; put("username", "x"); put("password", "y") }, idempotencyKey = YuvomiClient.newIdempotencyKey()) }
         if (!webdav.bool("configured")) {
             // Unconfigured, upstream's uploadBackup skips the upload and the route still answers
             // with the local snapshot (server/services/webdav-backup.js); 500 only when no local
