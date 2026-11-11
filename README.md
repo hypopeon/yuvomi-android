@@ -1,3 +1,15 @@
+# Familjehem – privat Android-fork
+
+Första leveransen under verifiering. ApplicationId `se.familj.hem`, version 0.1.0.
+Servermål: officiell Yuvomi 2.88.0. Kärnservern är inte forkad eller patchad.
+Appuppdateringar läses från inloggningsserverns `/updates/manifest.json`.
+APK:n måste använda samma HTTPS-origin och komplett SHA256; redirects följs inte.
+Signernyckeln lagras utanför Git. Android kontrollerar signaturen vid installation.
+Projects och Us är spärrade tills acceptansen är klar.
+
+Nedan följer upstreams dokumentation. Dess uppgifter om GitHub som
+uppdateringskälla gäller upstream, inte denna fork.
+
 # Yuvomi for Android (unofficial)
 
 > **An unofficial proof of concept.** This is not part of the

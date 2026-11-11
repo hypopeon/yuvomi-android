@@ -28,7 +28,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "io.github.marcomow.yuvomi"
+        applicationId = "se.familj.hem"
         minSdk = 26
         targetSdk = 36
         versionCode = releaseVersionCode
@@ -36,7 +36,6 @@ android {
         buildConfigField("String", "UPSTREAM_PIN", "\"$upstreamPin\"")
         buildConfigField("String", "UPSTREAM_MIN", "\"$upstreamMin\"")
         // In-app updates (ADR 0018): where the release workflow publishes the APK.
-        buildConfigField("String", "UPDATE_REPO", "\"marcomow/yuvomi-android\"")
         buildConfigField("boolean", "UPDATES_ENABLED", "false")
     }
 
@@ -169,6 +168,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
+    testImplementation("com.squareup.okhttp3:okhttp-tls:5.3.2")
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(platform(libs.compose.bom))
