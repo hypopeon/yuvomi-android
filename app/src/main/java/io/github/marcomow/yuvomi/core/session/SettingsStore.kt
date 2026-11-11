@@ -56,7 +56,7 @@ class SettingsStore(private val context: Context, private val box: SecretBox) {
         if (code == null) it.remove(Keys.language) else it[Keys.language] = code
     }
 
-    /** In-app updates (ADR 0018): check GitHub for a newer release automatically. On by default. */
+    /** In-app updates (ADR 0018): check the household server for a newer release automatically. On by default. */
     val autoUpdates: Flow<Boolean> = context.dataStore.data.map { it[Keys.autoUpdates] ?: true }
     suspend fun autoUpdatesNow(): Boolean = autoUpdates.first()
     suspend fun setAutoUpdates(on: Boolean) = context.dataStore.edit { it[Keys.autoUpdates] = on }

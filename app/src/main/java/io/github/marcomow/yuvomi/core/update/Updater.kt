@@ -24,26 +24,17 @@ import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
 
-/**
- * In-app updates (ADR 0018): asks GitHub for this app's newest release, downloads its APK,
- * checks the download against the digest GitHub publishes, and hands it to Android's package
- * installer. Android installs it only when it is signed with the same key as the installed app,
- * so a tampered or foreign APK cannot replace this one.
- *
- * This is the only traffic that does not go to the household's server. It uses its own HTTP
- * client, without the session's cookies, and runs automatically only while the member keeps
- * "Check automatically" on.
- */
+/** Reads /updates/manifest.json on the signed-in household server. APKs stay on
+ * that HTTPS origin, require SHA256, and are installed only by Android's installer. */
 class Updater(
     private val context: Context,
     private val settings: SettingsStore,
     private val http: OkHttpClient = OkHttpClient(),
     private val installed: String = BuildConfig.VERSION_NAME,
-    private val repo: String = BuildConfig.UPDATE_REPO,
     /** Release builds only: a debug build is signed with another key and could not be updated. */
     val enabled: Boolean = BuildConfig.UPDATES_ENABLED,
     private val now: () -> Long = System::currentTimeMillis,
-    private val apiBase: String = "https://api.github.com",
+    private val apiBase: String? = null,
 ) {
     sealed interface State {
         data object Idle : State
@@ -64,6 +55,15 @@ class Updater(
     val state: StateFlow<State> = _state.asStateFlow()
     val automatic: Flow<Boolean> = settings.autoUpdates
     private val lock = Mutex()
+    private val localHttp = http.newBuilder().followRedirects(false).followSslRedirects(false).build()
+    private suspend fun base(): String {
+        val address = (apiBase ?: settings.server() ?: throw IOException("No household server")).trimEnd('/')
+        val uri = runCatching { java.net.URI(address) }.getOrElse { throw IOException("Invalid household server", it) }
+        if (uri.scheme != "https" || uri.host == null || uri.userInfo != null || uri.query != null || uri.fragment != null) {
+            throw IOException("Updates require a household HTTPS origin")
+        }
+        return address
+    }
 
     private val dir get() = File(context.cacheDir, DIR)
 
@@ -78,13 +78,13 @@ class Updater(
 
     /**
      * Between checks, the update the last one found (ADR 0018): a restarted app still offers it
-     * without asking GitHub again. Dropped once the installed version has caught up.
+     * without asking the household server again. Dropped once the installed version has caught up.
      */
     private suspend fun restore(): Releases.Update? {
         (state.value as? State.Available)?.let { return it.update }
         if (state.value != State.Idle) return null
         val saved = settings.knownUpdate()?.let { runCatching { ApiJson.decodeFromString(Releases.Update.serializer(), it) }.getOrNull() }
-        if (saved == null || !Releases.isNewer(saved, installed)) return null
+        if (saved == null || !Releases.isNewer(saved, installed) || !runCatching { Releases.allowed(saved, base()) }.getOrDefault(false)) return null
         _state.value = State.Available(saved)
         return saved
     }
@@ -93,7 +93,7 @@ class Updater(
     val dismissed: Flow<String?> = settings.dismissedUpdate
     suspend fun dismiss(version: String) = settings.setDismissedUpdate(version)
 
-    /** Asks GitHub now; the result is also in [state]. Network failures leave a [State.Failed]. */
+    /** Asks the household server now; the result is also in [state]. Network failures leave a [State.Failed]. */
     suspend fun check(): Releases.Update? = lock.withLock {
         if (!enabled) return null
         _state.value = State.Checking
@@ -153,25 +153,27 @@ class Updater(
         Build.VERSION.SDK_INT < Build.VERSION_CODES.O || context.packageManager.canRequestPackageInstalls()
 
     private suspend fun fetch(): Releases.Update? = withContext(Dispatchers.IO) {
+        val origin = base()
         val request = Request.Builder()
-            .url("$apiBase/repos/$repo/releases?per_page=$PAGE")
-            .header("Accept", "application/vnd.github+json")
+            .url("$origin/updates/manifest.json")
+            .header("Accept", "application/json")
             .header("User-Agent", "yuvomi-android/$installed")
             .build()
-        http.newCall(request).execute().use { response ->
+        localHttp.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
-            Releases.newest(Releases.parse(response.body.string()), installed)
+            Releases.localNewest(Releases.parse(response.body.string()), installed, origin)
         }
     }
 
     private suspend fun download(update: Releases.Update): File = withContext(Dispatchers.IO) {
+        if (!Releases.allowed(update, base())) throw IOException("Invalid update origin or digest")
         dir.mkdirs()
         val target = File(dir, "yuvomi-android-${update.version}.apk")
         if (target.exists() && (update.sha256 == null || sha256(target) == update.sha256)) return@withContext target
         val part = File(dir, target.name + ".part")
         _state.value = State.Downloading(update, null)
         val request = Request.Builder().url(update.apkUrl).header("User-Agent", "yuvomi-android/$installed").build()
-        http.newCall(request).execute().use { response ->
+        localHttp.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val total = response.body.contentLength().takeIf { it > 0 } ?: update.size.takeIf { it > 0 }
             val digest = MessageDigest.getInstance("SHA-256")
@@ -228,6 +230,5 @@ class Updater(
         const val DIR = "updates"
         const val APK_TYPE = "application/vnd.android.package-archive"
         const val INTERVAL_MS = 12 * 60 * 60 * 1000L
-        private const val PAGE = 10
     }
 }

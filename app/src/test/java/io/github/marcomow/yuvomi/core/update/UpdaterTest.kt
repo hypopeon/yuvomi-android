@@ -31,6 +31,7 @@ import java.security.MessageDigest
 class UpdaterTest {
     private lateinit var server: MockWebServer
     private lateinit var app: Application
+    private lateinit var http: okhttp3.OkHttpClient
     private val apk = ByteArray(200_000) { (it % 251).toByte() }
     private var digest = sha256(apk)
     private var now = 1_000_000_000L
@@ -38,9 +39,14 @@ class UpdaterTest {
     @Before fun setUp() {
         app = ApplicationProvider.getApplicationContext()
         server = MockWebServer()
+        val certificate = okhttp3.tls.HeldCertificate.Builder().addSubjectAlternativeName("localhost").build()
+        val serverTls = okhttp3.tls.HandshakeCertificates.Builder().heldCertificate(certificate).build()
+        server.useHttps(serverTls.sslSocketFactory())
+        val clientTls = okhttp3.tls.HandshakeCertificates.Builder().addTrustedCertificate(certificate.certificate).build()
+        http = okhttp3.OkHttpClient.Builder().sslSocketFactory(clientTls.sslSocketFactory(), clientTls.trustManager).build()
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse = when (request.url.encodedPath) {
-                "/repos/me/app/releases" -> MockResponse.Builder().body(
+                "/updates/manifest.json" -> MockResponse.Builder().body(
                     """[{"tag_name":"v0.2.0","draft":false,"assets":[{"name":"yuvomi-android-0.2.0.apk",
                     "browser_download_url":"${server.url("/download/app.apk")}","size":${apk.size},"digest":"sha256:$digest"}]},
                     {"tag_name":"v0.1.4","draft":false,"assets":[]}]""",
@@ -56,7 +62,7 @@ class UpdaterTest {
     @After fun tearDown() = server.close()
 
     private fun updater(installed: String = "0.1.4", enabled: Boolean = true) = Updater(
-        app, SettingsStore(app, PlainSecretBox()), installed = installed, repo = "me/app", enabled = enabled,
+        app, SettingsStore(app, PlainSecretBox()), http = http, installed = installed, enabled = enabled,
         now = { now }, apiBase = server.url("/").toString().trimEnd('/'),
     )
 
@@ -140,6 +146,18 @@ class UpdaterTest {
         assertEquals("android.update.corrupt", (u.state.value as Updater.State.Failed).messageKey)
         assertFalse(File(app.cacheDir, "${Updater.DIR}/yuvomi-android-0.2.0.apk").exists())
         assertEquals(null, shadowOf(app).nextStartedActivity)
+    }
+
+    @Test fun `a cleartext manifest origin is rejected without a request`() = runBlocking {
+        MockWebServer().use { plain ->
+            plain.start()
+            plain.enqueue(MockResponse.Builder().body("[]").build())
+            val u = Updater(app, SettingsStore(app, PlainSecretBox()), enabled = true,
+                apiBase = plain.url("/").toString().trimEnd('/'))
+            assertEquals(null, u.check())
+            assertTrue(u.state.value is Updater.State.Failed)
+            assertEquals(0, plain.requestCount)
+        }
     }
 
     private fun sha256(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }

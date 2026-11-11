@@ -10,6 +10,22 @@ import kotlinx.serialization.json.Json
  * /repos/{repo}/releases` lists them. Pure, so the choice of update is unit tested.
  */
 object Releases {
+    /** Only an HTTPS APK on the household server with a complete digest is eligible. */
+    fun allowed(update: Update, base: String): Boolean = runCatching {
+        val origin = java.net.URI(base)
+        val apk = java.net.URI(update.apkUrl)
+        fun port(uri: java.net.URI) = if (uri.port == -1) 443 else uri.port
+        origin.scheme == "https" && apk.scheme == "https" &&
+            origin.host != null && origin.host.equals(apk.host, ignoreCase = true) &&
+            port(origin) == port(apk) && apk.userInfo == null &&
+            update.sha256?.matches(Regex("[a-f0-9]{64}")) == true
+    }.getOrDefault(false)
+
+    fun localNewest(releases: List<Release>, installed: String, base: String): Update? =
+        releases.mapNotNull { newest(listOf(it), installed) }
+            .filter { allowed(it, base) }
+            .maxByOrNull { Version.parse(it.version)!! }
+
     @Serializable
     data class Release(
         @SerialName("tag_name") val tag: String = "",
